@@ -59,6 +59,32 @@ export const projects = [
     note: "Read-only / paper trading only. Not financial advice. The project URL has not been provided.",
     url: null,
   },
+  {
+    id: "paper-kite",
+    number: "05",
+    title: "Paper Kite",
+    category: "Sample placeholder",
+    image: "/images/paper-kite.svg",
+    accent: "#b98a4e",
+    tagline: "Send an idea up, watch it soar.",
+    description:
+      "A sample entry added to demonstrate the extended-collection animation. Replace this with your next real project, or delete it.",
+    note: "Sample placeholder entry — replace with the actual features, story, and status.",
+    url: null,
+  },
+  {
+    id: "tide-table",
+    number: "06",
+    title: "Tide Table",
+    category: "Sample placeholder",
+    image: "/images/tide-table.svg",
+    accent: "#6d8578",
+    tagline: "Read the water, plan the day.",
+    description:
+      "A second sample entry that shows how the collection behaves once it grows past four pieces. Replace or remove this when a real project arrives.",
+    note: "Sample placeholder entry — replace with the actual features, story, and status.",
+    url: null,
+  },
 ];
 
 export function safeDestination(value) {

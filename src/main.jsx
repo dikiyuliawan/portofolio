@@ -5,6 +5,7 @@ import './styles.css';
 
 const routeFromPath = () => window.location.pathname.replace(/\/$/, '') === '/works' ? 'works' : 'about';
 const Arrow = ({ className = '' }) => <span aria-hidden="true" className={className}>↗</span>;
+const countWord = n => n <= 20 ? ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'][n] : String(n);
 
 function Door({ opening }) {
   return <div className={`door-scene ${opening ? 'is-opening' : ''}`} aria-hidden="true">
@@ -48,6 +49,38 @@ function Modal({ item, onClose }) {
       {url ? <a className="pill-link mt-7" href={url} target="_blank" rel="noopener noreferrer">{isContact ? 'Get in touch' : 'Visit project'} <Arrow /></a> : <p className="unavailable"><span aria-hidden="true">○</span> {isContact ? 'Contact link coming later' : 'Live project link not added yet'}</p>}
     </div>
   </dialog>;
+}
+
+function ProjectCard({ project, index, onOpen }) {
+  const ref = useRef(null);
+  const animate = index >= 4;
+  const [shown, setShown] = useState(!animate || typeof IntersectionObserver === 'undefined');
+  useEffect(() => {
+    if (!animate || shown) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setShown(true); return; }
+    let observer;
+    let alive = true;
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!alive || !ref.current) return;
+      // Start observing only after the hidden state has painted, so the entrance
+      // transition always plays — even when the card sits inside the initial viewport.
+      observer = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) { setShown(true); observer.disconnect(); }
+      }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+      observer.observe(ref.current);
+    }));
+    return () => { alive = false; cancelAnimationFrame(frame); observer?.disconnect(); };
+  }, [animate, shown]);
+  return <article ref={animate ? ref : undefined} className={`project project-${project.id}${animate ? ` reveal-card ${shown ? 'is-revealed' : 'is-hidden'}` : ''}`} style={animate ? { '--reveal-delay': `${((index - 4) % 4) * 110}ms` } : undefined}>
+    <button className="project-button" onClick={e => onOpen(e, project)} aria-label={`Explore ${project.title}`}>
+      <div className="object-stage"><img src={project.image} alt="" width="480" height="560" loading={animate ? 'lazy' : 'eager'} decoding="async" /><span className="object-arrow" aria-hidden="true">↗</span></div>
+      <div className="project-caption">
+        <h2><span className="project-number">{project.number} /</span> {project.title}</h2>
+        <p className="project-category">{project.category}</p>
+        <span className="project-rule" aria-hidden="true" />
+      </div>
+    </button>
+  </article>;
 }
 
 function App() {
@@ -111,20 +144,11 @@ function App() {
       <section className="collection-intro text-center">
         <p className="eyebrow mb-5">An independent collection</p>
         <h1 ref={heading} tabIndex="-1" className="collection-title">Serious craft.<br /><span>Curious little worlds.</span></h1>
-        <p className="collection-subtitle">Four experiments in making everyday life a little more interesting.</p>
+        <p className="collection-subtitle">{countWord(projects.length)}{projects.length === 1 ? ' experiment' : ' experiments'} in making everyday life a little more interesting.</p>
         <a href="#collection" className="explore-hint">Select an object to explore <span aria-hidden="true">↓</span></a>
       </section>
-      <section id="collection" aria-label="Project collection" className="project-gallery grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {projects.map(project => <article key={project.id} className={`project project-${project.id}`}>
-          <button className="project-button" onClick={e => openModal(e, project)} aria-label={`Explore ${project.title}`}>
-            <div className="object-stage"><img src={project.image} alt="" width="480" height="560" loading="eager" decoding="async" /><span className="object-arrow" aria-hidden="true">↗</span></div>
-            <div className="project-caption">
-              <h2><span className="project-number">{project.number} /</span> {project.title}</h2>
-              <p className="project-category">{project.category}</p>
-              <span className="project-rule" aria-hidden="true" />
-            </div>
-          </button>
-        </article>)}
+      <section id="collection" aria-label="Project collection" className="project-gallery">
+        {projects.map((project, index) => <ProjectCard key={project.id} project={project} index={index} onOpen={openModal} />)}
       </section>
       <div className="collection-end flex flex-col sm:flex-row items-center justify-between gap-5">
         <p>Small ideas. Made with intention.</p>

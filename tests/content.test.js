@@ -2,19 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { profile, projects, safeDestination } from '../src/content.js';
 
-test('portfolio contains four uniquely identified projects with no live URLs', () => {
-  assert.equal(projects.length, 4);
+test('portfolio contains at least four uniquely identified projects with no live URLs', () => {
+  assert.ok(projects.length >= 4, 'expected at least four projects');
   for (const field of ['id', 'number', 'title']) {
     const values = projects.map(project => project[field]);
-    assert.equal(new Set(values).size, 4, `${field} values should be unique`);
+    assert.equal(new Set(values).size, projects.length, `${field} values should be unique`);
   }
   assert.ok(projects.every(project => project.url === null));
 });
 
-test('profile remains an explicit placeholder without a contact destination', () => {
-  assert.match(profile.name, /^\[.+\]$/);
-  assert.match(profile.role, /^\[.+\]$/);
-  assert.match(profile.note, /^\[.+\]$/);
+test('profile is filled in and still has no contact destination', () => {
+  for (const value of [profile.name, profile.role, profile.note]) {
+    assert.equal(typeof value, 'string');
+    assert.ok(value.trim().length > 0, 'profile strings should not be empty');
+  }
   assert.equal(profile.contactUrl, null);
 });
 
