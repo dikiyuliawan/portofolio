@@ -22,6 +22,12 @@ function Modal({ item, onClose }) {
   const ref = useRef(null);
   const isContact = item === 'contact';
   const url = safeDestination(isContact ? profile.contactUrl : item.url);
+  const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const shareUrl = isContact
+    ? window.location.href
+    : (url || `${window.location.origin}/works?world=${encodeURIComponent(item.id)}`);
+
   useEffect(() => {
     const dialog = ref.current;
     const previousOverflow = document.body.style.overflow;
@@ -29,6 +35,53 @@ function Modal({ item, onClose }) {
     dialog.showModal();
     return () => { document.body.style.overflow = previousOverflow; };
   }, []);
+
+  async function copyToClipboard(text) {
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {}
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async function handleShare() {
+    const data = {
+      title: isContact ? `${profile.name} — say hello` : item.title,
+      text: isContact ? 'A conversation, someday.' : item.tagline,
+      url: shareUrl,
+    };
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      setSharing(true);
+      try { await navigator.share(data); }
+      catch (error) { if (error && error.name !== 'AbortError') console.error(error); }
+      finally { setSharing(false); }
+    } else {
+      const ok = await copyToClipboard(shareUrl);
+      if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1600); }
+    }
+  }
+
+  async function handleCopy() {
+    const ok = await copyToClipboard(shareUrl);
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1600); }
+  }
+
   return <dialog ref={ref} onClose={onClose} onClick={e => {
     if (e.target === ref.current) {
       const box = ref.current.getBoundingClientRect();
@@ -40,13 +93,21 @@ function Modal({ item, onClose }) {
         <span className="eyebrow">{isContact ? 'A conversation, someday' : `The collection / ${item.number}`}</span>
         <button autoFocus className="close-button" onClick={() => ref.current.close()} aria-label="Close dialog">×</button>
       </div>
-      {!isContact && <img className="detail-image" src={item.image} width="480" height="560" alt="" />}
+      {!isContact && <img className="detail-image" src={item.image} width="480" height="560" alt={`${item.title} project artwork`} />}
       <p className="eyebrow mb-3">{isContact ? 'Contact placeholder' : item.category}</p>
       <h2 id="detail-title" className="dialog-title">{isContact ? 'Say hello.' : item.title}</h2>
       <p className="dialog-tagline">{isContact ? 'Every good thing starts with a hello.' : item.tagline}</p>
       <p className="dialog-description">{isContact ? 'A contact destination hasn’t been added yet. This is an intentional placeholder — no email address or social profile is connected.' : item.description}</p>
       {!isContact && <p className="placeholder-note">{item.note}</p>}
       {url ? <a className="pill-link mt-7" href={url} target="_blank" rel="noopener noreferrer">{isContact ? 'Get in touch' : 'Visit project'} <Arrow /></a> : <p className="unavailable"><span aria-hidden="true">○</span> {isContact ? 'Contact link coming later' : 'Live project link not added yet'}</p>}
+      <div className="dialog-actions flex flex-wrap items-center gap-3 mt-6">
+        <button type="button" className="share-button" onClick={handleShare} disabled={sharing} aria-label="Share this world">
+          {sharing ? 'Sharing…' : 'Share'} <Arrow />
+        </button>
+        <button type="button" className="share-button" onClick={handleCopy} aria-label="Copy link to this world">
+          {copied ? 'Copied ✓' : 'Copy link'}
+        </button>
+      </div>
     </div>
   </dialog>;
 }
@@ -93,6 +154,14 @@ function App() {
   const returnFocus = useRef(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const world = params.get('world');
+    if (!world) return;
+    const project = projects.find(item => item.id === world);
+    if (project) setModal(project);
+  }, []);
+
+  useEffect(() => {
     const onPop = () => {
       clearTimeout(timer.current);
       setTransitioning(false);
@@ -125,7 +194,13 @@ function App() {
     } else change();
   }
 
-  function openModal(event, item) { returnFocus.current = event.currentTarget; setModal(item); }
+  function openModal(event, item) { returnFocus.current = event?.currentTarget ?? document.activeElement; setModal(item); }
+  function openItem(item) { returnFocus.current = document.activeElement; setModal(item); }
+  function openRandomWorld() {
+    if (!projects.length) return;
+    const pick = projects[Math.floor(Math.random() * projects.length)];
+    openItem(pick);
+  }
   function closeModal() { setModal(null); returnFocus.current?.focus({ preventScroll: true }); }
 
   const isWorks = route === 'works';
@@ -152,7 +227,10 @@ function App() {
       </section>
       <div className="collection-end flex flex-col sm:flex-row items-center justify-between gap-5">
         <p>Small ideas. Made with intention.</p>
-        <a href="/" onClick={e => navigate(e, 'about')} className="back-link"><span aria-hidden="true">←</span> Back to the person behind them</a>
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <button type="button" className="surprise-button" onClick={openRandomWorld} aria-label="Open a random world">Surprise me <Arrow /></button>
+          <a href="/" onClick={e => navigate(e, 'about')} className="back-link"><span aria-hidden="true">←</span> Back to the person behind them</a>
+        </div>
       </div>
     </main> : <main id="main" tabIndex="-1" className="about-main text-center flex flex-col items-center">
       <section className="intro-copy">
